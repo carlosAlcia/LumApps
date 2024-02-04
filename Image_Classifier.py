@@ -11,8 +11,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import os
+import Image_Transform as ImT
 
 PATH_NN = './cifar_net.pth'
+CLASSES = ('plane', 'car', 'bird', 'cat',
+            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 # Define a Convolutional Neural Network :
 class Net(nn.Module):
@@ -56,11 +59,10 @@ def load_data() :
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                             shuffle=False, num_workers=0)
 
-    classes = ('plane', 'car', 'bird', 'cat',
-            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+ 
 
     print("Data loaded")
-    return trainloader, testloader, classes
+    return trainloader, testloader
 
 
 # Function to train the model.
@@ -75,8 +77,8 @@ def train():
             return
 
     # Load the dataset using PyTorch 
-    trainloader, _, _ = load_data()
-    
+    trainloader, _ = load_data()
+
     net = Net()
 
     # Define a Loss function and optimizer
@@ -110,17 +112,23 @@ def train():
     # Save the model 
     torch.save(net.state_dict(), PATH_NN)
 
-# Predict the class of an image.
-def predict() :
+
+def predict(image) :
+    """ @brief : Predict the class of an image.
+        @param : image [np.array] : Image to predict the class. Normalized, size 3x32x32. 
+        @return : [string]: Text with class predicted and confidence."""
+
     net = Net()
     net.load_state_dict(torch.load(PATH_NN))
-    _, testloader, classes = load_data()
-    dataiter = iter(testloader)
-    images, labels = next(dataiter)
-    outputs = net(images)
-    _, predicted = torch.max(outputs, 1)
-    print('Predicted: ', ' '.join(f'{classes[predicted[j]]:5s}'
-                              for j in range(4)))
+    outputs = net(image)
+    confidence, predicted = torch.max(outputs, 1)
+
+    # Get probabilities
+    probabilities = F.softmax(outputs, dim=1)
+    # Get Confidence
+    confidence, _ = torch.max(probabilities, dim=1)
+
+    return 'Predicted: ' + CLASSES[predicted[0]]+ " (" + str(np.round(max(confidence).item()*100,2))+ "%)"
     
 
 if __name__ == '__main__':
