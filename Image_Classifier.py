@@ -5,13 +5,11 @@
 import torch
 import torchvision
 import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import os
-import Image_Transform as ImT
 
 PATH_NN = './cifar_net.pth'
 CLASSES = ('plane', 'car', 'bird', 'cat',
@@ -46,7 +44,7 @@ def load_data() :
 
     batch_size = 4
 
-    # I modified the file 
+    # Modification in file:
     # C:\Users\Carlos\AppData\Local\Programs\Python\Python310\lib\site-packages\torchvision\datasets\cifar.py", line 31 
     # to avoid the SSL issue.
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
@@ -59,7 +57,6 @@ def load_data() :
     testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                             shuffle=False, num_workers=0)
 
- 
 
     print("Data loaded")
     return trainloader, testloader
@@ -71,9 +68,10 @@ def train():
     #Check if there is a trained model in the files directory.
     if os.path.isfile(PATH_NN):
         #There is a trained model. Check if the user want to train the model again.
-        train_again = input("A CIFAR NET already exists. Do you want to train the model again? (Y/N)") 
-        if train_again.lower().startswith("n"):
+        train_again = input("A CIFAR NET already exists. Do you want to train the model again? (Y/N)\n") 
+        if not (train_again.lower().startswith("y")):
             #If not, exit from the train function.
+            print("Exiting... \n")
             return
 
     # Load the dataset using PyTorch 
@@ -115,9 +113,15 @@ def train():
 
 def predict(image) :
     """ @brief : Predict the class of an image.
-        @param : image [np.array] : Image to predict the class. Normalized, size 3x32x32. 
-        @return : [string]: Text with class predicted and confidence."""
-
+        @param : image [Tensor] : Image to predict the class. Normalized, size 3x32x32. 
+        @return : ([string], [float]): Tuple with (Text with result, confidence). """
+    
+    #Check if there is a trained model in the files directory.
+    if not os.path.isfile(PATH_NN):
+        #There isn't a trained model. Train the model first.
+        print("Training the model for the first time, this may take a while... \n")
+        train()
+        
     net = Net()
     net.load_state_dict(torch.load(PATH_NN))
     outputs = net(image)
@@ -128,7 +132,10 @@ def predict(image) :
     # Get Confidence
     confidence, _ = torch.max(probabilities, dim=1)
 
-    return 'Predicted: ' + CLASSES[predicted[0]]+ " (" + str(np.round(max(confidence).item()*100,2))+ "%)"
+    text_result = 'Predicted: ' + CLASSES[predicted[0]]+ " (" + str(np.round(max(confidence).item()*100,2))+ "%)"
+    confidence = np.round(max(confidence).item()*100,2)
+
+    return text_result, confidence 
     
 
 if __name__ == '__main__':

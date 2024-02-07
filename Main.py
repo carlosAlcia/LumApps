@@ -1,11 +1,9 @@
+# Code by Carlos Alvarez 2024.
+
 import pathlib
 import tkinter as tk
 import tkinter.ttk as ttk
 import pygubu
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import torch
 import Image_Classifier as ImC
 import Image_Transform as ImT
 from tkinter import filedialog
@@ -16,28 +14,7 @@ import io
 
 PROJECT_PATH = pathlib.Path(__file__).parent
 PROJECT_UI = PROJECT_PATH / "Main_screen_UI.ui"
-PATH_NN = './cifar_net.pth'
 
-
-# Define a Convolutional Neural Network :
-class Net(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv1 = nn.Conv2d(3, 6, 5)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(6, 16, 5)
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 10)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
 
 class Main_screen:
     def __init__(self, master=None):
@@ -58,6 +35,16 @@ class Main_screen:
         # Save the output label to print results to user.
         self.output_lb = builder.get_object('outputs_label', master)
 
+        # Save the progress bar to show graphically the confidence
+        self.bar_confidence = builder.get_object('bar_confidence', master)
+
+        # Definition of different styles to change confidence bar color
+        self.style = ttk.Style()
+        self.style.theme_use('clam') 
+        self.style.configure("1.Horizontal.TProgressbar", troughcolor ='white', background='green') 
+        self.style.configure("2.Horizontal.TProgressbar", troughcolor ='white', background='yellow')
+        self.style.configure("3.Horizontal.TProgressbar", troughcolor ='white', background='red')
+
         # Create an object to store the image
         self.picture = None
 
@@ -69,17 +56,27 @@ class Main_screen:
 
     # Callback of Load Image from file button.
     def load_image_from_file(self):
+        # Show window to select file
         file_path = filedialog.askopenfilename(filetypes=[("Files JPEG", "*.jpg;*.jpeg")])
+        # Check if a valid file is selected.
         if file_path:
+            # Transform picture and save in class variable for the prediction.
             self.picture = ImT.transform_image(file_path, from_path=True)
+
+            # Resize the image to fit the canvas.
             image_scaled = ImT.resize_image(file_path, self.canvas.winfo_width(), self.canvas.winfo_height(), from_path=True)
+            # Change the image to tk format.
             self.image_tk = ImT.get_image_tk(image_scaled)
+            # Show the image in the canvas.
             self.canvas.itemconfig(self.image_container, image=self.image_tk)
             self.canvas.update()
 
 
+    # Callback of Load image from clipboard button.
     def load_image_from_cb(self):
+        # Get the capture from the clipboard.
         capture = ImageGrab.grabclipboard()
+        #Check if there was any picture in the clipboard.
         if capture is not None:
             # Convert the capture to bytes format bytes to open with Pillow
             imagen_bytes = io.BytesIO()
@@ -87,19 +84,39 @@ class Main_screen:
             # Open the image with Pillow
             image = Image.open(imagen_bytes).convert("RGB")
 
+            # Transform picture and save in class variable for the prediction.
             self.picture = ImT.transform_image(image)
+
+            # Resize the image to fit the canvas.
             image_scaled = ImT.resize_image(image,  self.canvas.winfo_width(), self.canvas.winfo_height())
+            # Change the image to tk format.
             self.image_tk = ImT.get_image_tk(image_scaled)
+            # Show the image in the canvas.
             self.canvas.itemconfig(self.image_container, image=self.image_tk)
             self.canvas.update()
 
         else:
             self.output_lb.config(text="No image in the clipboard")
 
-
+    # Callback of the predict button.
     def predict_class(self):
+        #First check if there is a picture in the class variable.
         if (self.picture is not None):
-            self.output_lb.config(text=ImC.predict(self.picture))
+            # Call the predict function.
+            text_result, confidence = ImC.predict(self.picture)
+
+            #Set the result in the output label.
+            self.output_lb.config(text=text_result)
+
+            #Update the confidence bar with the value and color.
+            self.bar_confidence.config(value=confidence)
+            if (confidence >= 80) :
+                self.bar_confidence.config(style="1.Horizontal.TProgressbar")
+            if (confidence < 80 and confidence > 40):
+                self.bar_confidence.config(style="2.Horizontal.TProgressbar")
+            if (confidence <= 40) :
+                self.bar_confidence.config(style="3.Horizontal.TProgressbar")
+
         else :
             self.output_lb.config(text="You must provide an image first")
 

@@ -1,3 +1,5 @@
+# Code by Carlos Alvarez Cia 2024
+
 import numpy as np
 from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
@@ -36,10 +38,17 @@ def imshow(img):
     img = img / 2 + 0.5     # unnormalize
     npimg = img.numpy()
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    plt.title("Image resized 32x32")
     plt.show()
 
 
 def resize_image(image, width=32, height=32, from_path=False):
+    """@brief : Function to resize an image to a desired size.
+        @param : image [Image] : image (or path to the image) to resize.
+        @param : width [int] : Width of the resized image. Default = 32
+        @param : height [int] : height of the resized image. Default = 32
+        @param : from_path [boolean] : True if providing the image's path. Default = False
+        @return : [Image] Image resized to desired size."""
     if (from_path):
         # Open the image with PIL
         image = Image.open(image)
@@ -47,5 +56,9 @@ def resize_image(image, width=32, height=32, from_path=False):
     image = image.resize((width, height))
     return image
 
+
 def get_image_tk(image):
+    """@brief : Function to get an Tk image from an Image.
+    @param : image [Image]
+    @return : [ImakeTk] : Image Tk"""
     return ImageTk.PhotoImage(image)
